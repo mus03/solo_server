@@ -9,7 +9,11 @@ const port = process.env.PORT || 5000;
 const app = express();
 
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://localhost:5174"],
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://solo-c9a4f.web.app",
+  ],
   credentials: true,
   optionSuccessStatus: 200,
 };
@@ -174,6 +178,46 @@ async function run() {
       };
       const result = await bidssCollection.updateOne(query, updateDoc);
       res.send(result);
+    });
+
+    //delete one bid by its user
+    app.get("/bid/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bidssCollection.deleteOne(query);
+      res.send(result);
+    });
+    //for pagination
+    app.get("/all-jobs", async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) - 1;
+      const filter = req.query.filter;
+      const sort = req.query.sort;
+      const search = req.query.search;
+      console.log(size, page);
+      let query = {
+        job_title: { $regex: search, $options: "i" },
+      };
+      if (filter) query.category = filter;
+      let options = {};
+      if (sort) options = { sort: { deadline: sort === "asc" ? 1 : -1 } };
+      const result = await jobsCollection
+        .find(query, options)
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
+    //jobs data count
+    app.get("/jobs-count", async (req, res) => {
+      const filter = req.query.filter;
+      const search = req.query.search;
+      let query = {
+        job_title: { $regex: search, $options: "i" },
+      };
+      if (filter) query.category = filter;
+      const count = await jobsCollection.countDocuments(query);
+      res.send({ count });
     });
 
     // Send a ping to confirm a successful connection
